@@ -1,0 +1,17 @@
+{
+  "name": "solidified-smart",
+  "version": "1.0.22",
+  "main": "index.js",
+  "devDependencies": {
+    "angular": "^1.6.6",
+    "angular-route": "^1.6.6",
+    "ethereumjs-testrpc": "^6.0.1",
+    "serve": "^6.4.0",
+    "truffle": "^4.0.1",
+    "truffle-default-builder": "^2.0.0"
+  },
+  "scripts": {
+    "start": "node .",
+    "backoffice": "node fix-build && truffle build && serve -s build"
+  }
+}
