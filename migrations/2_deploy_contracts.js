@@ -16,7 +16,7 @@ module.exports = function (deployer, network, accounts) {
     return SolidifiedDepositableFactory.new()
   }).then(function (instance){
     factoryAddress = instance.address
-    return SolidifiedMain.new(controller, factoryAddress, "0x004")
+    return SolidifiedMain.new(controller, factoryAddress, "0xC6625B71dbA18069B07Eafd2FC3a86bbC6963367")
   }).then(function(instance){
      main = instance;
      console.log("Main address", main.address);

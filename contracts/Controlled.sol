@@ -1,4 +1,4 @@
-pragma solidity 0.4.18;
+pragma solidity 0.5.0;
 
 import "./Owned.sol";
 
@@ -8,7 +8,7 @@ Manage a privileged user "controllerAddress" which is expected to be a centraliz
 
 contract ControlledI is OwnedI {
 
-    function getController() public constant returns(address controller);
+    function getController() public view returns(address controller);
     function changeController(address newController) public returns(bool success);
 }
 
@@ -26,12 +26,12 @@ contract Controlled is ControlledI, Owned {
         _;
     }
 
-    function Controlled(address controller) public {
+    constructor(address controller) public {
         controllerAddress = controller;
         if(controllerAddress == address(0)) controllerAddress = msg.sender;
     }
 
-    function getController() public constant returns(address controller) {
+    function getController() public view returns(address controller) {
         return controllerAddress;
     }
 
@@ -40,9 +40,9 @@ contract Controlled is ControlledI, Owned {
         onlyOwner
         returns(bool success)
     {
-        require(newController != 0);
+        require(newController != address(0));
         require(newController != controllerAddress);
-        LogControllerChanged(msg.sender, controllerAddress, newController);
+        emit LogControllerChanged(msg.sender, controllerAddress, newController);
         controllerAddress = newController;
         return true;
     }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.5.0;
 
 import "./Deployer.sol";
 import "./Controlled.sol";
@@ -12,7 +12,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
 
   // VARIABLES
   address public depositableFactoryAddress;
-  address public vault;
+  address payable public vault;
 
   mapping(address => UserStruct) public userStructs;
   mapping(address => address) public depositAddresses; //maps user address to depositAddress
@@ -25,8 +25,8 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
 
   //EVENTS
   event LogUserDeposit(address user, address depositAddress, uint amount);
-  event LogUserCreditCollected(address user, uint amount, bytes32 reference);
-  event LogUserCreditDeposit(address user, uint amount, bytes32 reference);
+  event LogUserCreditCollected(address user, uint amount, bytes32 ref);
+  event LogUserCreditDeposit(address user, uint amount, bytes32 ref);
   event LogDepositableDeployed(address user, address depositableAddress, uint id);
   event LogRequestWithdraw(address user, uint amount);
   event LogUserInserted(address user, uint userId);
@@ -40,11 +40,9 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
   @param _depositableFactoryAddress address Address of the depositable factoryAddress
   @param _vault address Address of the vault
   **/
-  function
-    SolidifiedMain
-      (address controller,
+  constructor(address controller,
       address _depositableFactoryAddress,
-      address _vault)
+      address payable _vault)
       public
     Controlled(controller) {
       vault = _vault;
@@ -67,38 +65,38 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     userStructs[_userAddress].balance = userStructs[_userAddress].balance.add(msg.value);
 
     vault.transfer(msg.value);
-    LogUserDeposit(_userAddress, msg.sender, msg.value);
+    emit LogUserDeposit(_userAddress, msg.sender, msg.value);
   }
 
   /**
   @dev Allows the controller to collect/lock user funds
   @param _userAddress address Adress of the user to collect credit from
   @param amount uint256 Amount to be collected
-  @param reference bytes32 Referece for the reason for collection
+  @param ref bytes32 Referece for the reason for collection
   **/
-  function collectUserCredit(address _userAddress, uint256 amount, bytes32 reference)
+  function collectUserCredit(address _userAddress, uint256 amount, bytes32 ref)
     public
     onlyController
     onlyIfRunning
   {
       require(userStructs[_userAddress].balance >= amount);
       userStructs[_userAddress].balance = userStructs[_userAddress].balance.sub(amount);
-      LogUserCreditCollected(_userAddress, amount, reference);
+      emit LogUserCreditCollected(_userAddress, amount, ref);
   }
 
   /**
   @dev Allows controller to deposit funds for user
   @param _userAddress address Adress of the user to collect credit from
   @param amount uint256 Amount to be collected
-  @param reference bytes32 Referece for the reason for collection
+  @param ref bytes32 Referece for the reason for collection
   **/
-  function depositUserCredit(address _userAddress, uint256 amount, bytes32 reference)
+  function depositUserCredit(address _userAddress, uint256 amount, bytes32 ref)
     public
     onlyController
     onlyIfRunning
   {
       userStructs[_userAddress].balance = userStructs[_userAddress].balance.add(amount);
-      LogUserCreditDeposit(_userAddress, amount, reference);
+      emit LogUserCreditDeposit(_userAddress, amount, ref);
   }
 
   /**
@@ -113,14 +111,14 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     returns(address depositable)
   {
       if(!isUser(_userAddress)) require(insertNewUser(_userAddress));
-      require(depositAddresses[_userAddress] == 0);
+      require(depositAddresses[_userAddress] == address(0));
       SolidifiedDepositableFactoryI f = SolidifiedDepositableFactoryI(depositableFactoryAddress);
-      address d = f.deployDepositableContract(_userAddress, this);
+      address d = f.deployDepositableContract(_userAddress, address(this));
 
       require(insertDeployedContract(d));
       require(registerDepositAddress(_userAddress, d));
 
-      LogDepositableDeployed(_userAddress, d,getDeployedContractsCount());
+      emit LogDepositableDeployed(_userAddress, d,getDeployedContractsCount());
 
       return d;
   }
@@ -137,9 +135,10 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
   {
     require(userStructs[_userAddress].balance >= amount);
     userStructs[_userAddress].balance = userStructs[_userAddress].balance.sub(amount);
-    require(vault.call(bytes4(keccak256("submitTransaction(address,uint256)")),_userAddress,amount));
+    (bool success, bytes memory _) = vault.call(abi.encodeWithSignature("submitTransaction(address,uint256)",_userAddress,amount));
+    require(success);
 
-    LogRequestWithdraw(_userAddress, amount);
+    emit LogRequestWithdraw(_userAddress, amount);
   }
 
   /**
@@ -167,7 +166,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyController
     onlyIfRunning
   {
-    depositAddresses[_userAddress] = 0;
+    depositAddresses[_userAddress] = address(0);
   }
 
   /**
@@ -182,7 +181,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
   {
     require(!isUser(user));
     userStructs[user].pointer = userList.push(user).sub(uint(1));
-    LogUserInserted(user, userStructs[user].pointer);
+    emit LogUserInserted(user, userStructs[user].pointer);
     return true;
   }
 
@@ -190,14 +189,14 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
   @dev Change the vault address
   @param _newVault address Address of the new vault
   **/
-  function changeVaultAddress(address _newVault)
+  function changeVaultAddress(address payable _newVault)
     public
     onlyOwner
     onlyIfRunning
   {
-    require(_newVault != 0);
+    require(_newVault != address(0));
     vault = _newVault;
-    LogVaultAddressChanged(_newVault, msg.sender);
+    emit LogVaultAddressChanged(_newVault, msg.sender);
   }
 
   /**
@@ -209,10 +208,10 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyController
     onlyIfRunning
   {
-    require(_newAddress != 0);
+    require(_newAddress != address(0));
     depositableFactoryAddress = _newAddress;
 
-    LogDepositableFactoryAddressChanged(_newAddress, msg.sender);
+    emit LogDepositableFactoryAddressChanged(_newAddress, msg.sender);
   }
 
   /**
@@ -220,7 +219,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
   @param user address Address of the user
   @return true if address is user
   **/
-  function isUser(address user) public constant returns(bool isIndeed) {
+  function isUser(address user) public view returns(bool isIndeed) {
       if(userList.length ==0) return false;
       return(userList[userStructs[user].pointer] == user);
   }

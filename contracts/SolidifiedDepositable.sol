@@ -1,4 +1,4 @@
-pragma solidity 0.4.18;
+pragma solidity 0.5.0;
 
 contract SolidifiedDepositable {
 
@@ -10,7 +10,7 @@ contract SolidifiedDepositable {
     @param _userAddress address The user address that will be credited in main hubDeployer
     @param _mainHub address The address of the main hub
   **/
-  function SolidifiedDepositable(address _userAddress, address _mainHub)
+  constructor(address _userAddress, address _mainHub)
   public
   {
     userAddress = _userAddress;
@@ -22,9 +22,10 @@ contract SolidifiedDepositable {
   @dev Fallback to receive ether and transfer to _mainHub
   **/
   function ()
-    public
+    external
     payable {
     require(msg.value > 0);
-    require(mainHub.call.value(msg.value)(bytes4(keccak256("receiveDeposit(address)")),userAddress));
+    (bool success, bytes memory _) = mainHub.call.value(msg.value)(abi.encodeWithSignature("receiveDeposit(address)",userAddress));
+    require(success);
   }
 }

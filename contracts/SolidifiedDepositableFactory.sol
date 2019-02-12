@@ -1,4 +1,4 @@
-pragma solidity 0.4.18;
+pragma solidity 0.5.0;
 
 import "./SolidifiedDepositable.sol";
 import "./SolidifiedDepositableFactoryI.sol";
@@ -16,7 +16,7 @@ contract SolidifiedDepositableFactory is SolidifiedDepositableFactoryI {
     returns(address depositable){
 
       SolidifiedDepositable d = new SolidifiedDepositable(_userAddress, _mainHub);
-      return d;
+      return address(d);
   }
 
 }

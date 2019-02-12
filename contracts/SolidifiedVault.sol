@@ -1,4 +1,4 @@
-pragma solidity 0.4.18;
+pragma solidity 0.5.0;
 
 
 /** @title Solidified Vault
@@ -20,7 +20,7 @@ contract SolidifiedVault {
     event RequirementChange(uint required);
 
     /*
-     *  Constants
+     *  views
      */
     uint constant public MAX_OWNER_COUNT = 3;
 
@@ -59,7 +59,7 @@ contract SolidifiedVault {
     }
 
     modifier transactionExists(uint transactionId) {
-        require(transactions[transactionId].destination != 0);
+        require(transactions[transactionId].destination != address(0));
         _;
     }
 
@@ -79,7 +79,7 @@ contract SolidifiedVault {
     }
 
     modifier notNull(address _address) {
-        require(_address != 0);
+        require(_address != address(0));
         _;
     }
 
@@ -95,11 +95,11 @@ contract SolidifiedVault {
       @dev Fallback function allows to deposit ether.
     **/
     function()
-        public
+        external
         payable
     {
         if (msg.value > 0)
-            Deposit(msg.sender, msg.value);
+            emit Deposit(msg.sender, msg.value);
     }
 
     /*
@@ -110,12 +110,12 @@ contract SolidifiedVault {
      @param _owners List of initial owners.
      @param _required Number of required confirmations.
      **/
-    function SolidifiedVault(address[] _owners, uint _required)
+    constructor(address[] memory _owners, uint _required)
         public
         validRequirement(_owners.length, _required)
     {
         for (uint i=0; i<_owners.length; i++) {
-            require(!isOwner[_owners[i]] && _owners[i] != 0);
+            require(!isOwner[_owners[i]] && _owners[i] != address(0));
             isOwner[_owners[i]] = true;
         }
         owners = _owners;
@@ -144,7 +144,7 @@ contract SolidifiedVault {
         notConfirmed(transactionId, msg.sender)
     {
         confirmations[transactionId][msg.sender] = true;
-        Confirmation(msg.sender, transactionId);
+        emit Confirmation(msg.sender, transactionId);
         executeTransaction(transactionId);
     }
 
@@ -157,7 +157,7 @@ contract SolidifiedVault {
         notExecuted(transactionId)
     {
         confirmations[transactionId][msg.sender] = false;
-        Revocation(msg.sender, transactionId);
+        emit Revocation(msg.sender, transactionId);
     }
 
     /// @dev Allows anyone to execute a confirmed transaction.
@@ -171,10 +171,11 @@ contract SolidifiedVault {
         if (isConfirmed(transactionId)) {
             Transaction storage txn = transactions[transactionId];
             txn.executed = true;
-            if (txn.destination.call.value(txn.value)())
-                Execution(transactionId);
+            (bool exec, bytes memory _) = txn.destination.call.value(txn.value)("");
+            if (exec)
+                emit Execution(transactionId);
             else {
-                ExecutionFailure(transactionId);
+                emit ExecutionFailure(transactionId);
                 txn.executed = false;
             }
         }
@@ -185,7 +186,7 @@ contract SolidifiedVault {
     /// @return Confirmation status.
     function isConfirmed(uint transactionId)
         public
-        constant
+        view
         returns (bool)
     {
         uint count = 0;
@@ -216,7 +217,7 @@ contract SolidifiedVault {
             executed: false
         });
         transactionCount += 1;
-        Submission(transactionId);
+        emit Submission(transactionId);
     }
 
     /*
@@ -227,7 +228,7 @@ contract SolidifiedVault {
     /// @return Number of confirmations.
     function getConfirmationCount(uint transactionId)
         public
-        constant
+        view
         returns (uint count)
     {
         for (uint i=0; i<owners.length; i++)
@@ -241,7 +242,7 @@ contract SolidifiedVault {
     /// @return Total number of transactions after filters are applied.
     function getTransactionCount(bool pending, bool executed)
         public
-        constant
+        view
         returns (uint count)
     {
         for (uint i=0; i<transactionCount; i++)
@@ -254,8 +255,8 @@ contract SolidifiedVault {
     /// @return List of owner addresses.
     function getOwners()
         public
-        constant
-        returns (address[])
+        view
+        returns (address[] memory)
     {
         return owners;
     }
@@ -265,8 +266,8 @@ contract SolidifiedVault {
     /// @return Returns array of owner addresses.
     function getConfirmations(uint transactionId)
         public
-        constant
-        returns (address[] _confirmations)
+        view
+        returns (address[] memory _confirmations)
     {
         address[] memory confirmationsTemp = new address[](owners.length);
         uint count = 0;
@@ -289,8 +290,8 @@ contract SolidifiedVault {
     /// @return Returns array of transaction IDs.
     function getTransactionIds(uint from, uint to, bool pending, bool executed)
         public
-        constant
-        returns (uint[] _transactionIds)
+        view
+        returns (uint[] memory _transactionIds)
     {
         uint[] memory transactionIdsTemp = new uint[](transactionCount);
         uint count = 0;
