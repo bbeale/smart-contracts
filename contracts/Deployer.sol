@@ -22,7 +22,7 @@ contract Deployer is DeployerI {
     event LogDeployedContract(address sender, address deployed);
 
     modifier onlyDeployed {
-        require(isDeployedContract(msg.sender));
+        require(isDeployedContract(msg.sender), "Deployer:sender should be deployed contract");
         _;
     }
 
@@ -31,7 +31,7 @@ contract Deployer is DeployerI {
     }
 
     function insertDeployedContract(address deployed) internal returns(bool success) {
-        require(!isDeployedContract(deployed));
+        require(!isDeployedContract(deployed), "Deployer:deployed is already inserted");
         deployedContractPointers[deployed] = deployedContracts.push(deployed).sub(uint(1));
         emit LogDeployedContract(msg.sender, deployed);
         return true;

@@ -14,7 +14,7 @@ contract Owned is OwnedI {
         address newOwner);
 
     modifier onlyOwner {
-        require(msg.sender == contractOwner);
+        require(msg.sender == contractOwner, "Owned:sender should be owner");
         _;
     }
 
@@ -31,7 +31,7 @@ contract Owned is OwnedI {
         onlyOwner
         returns(bool success)
     {
-        require(newOwner != address(0));
+        require(newOwner != address(0), "Owned:invalid address");
         emit LogOwnerChanged(contractOwner, newOwner);
         contractOwner = newOwner;
         return true;

@@ -17,7 +17,7 @@ contract Deployed is DeployedI, Owned {
         address newDeployer);
 
     modifier onlyDeployer {
-        require(msg.sender == address(deployerAddress));
+        require(msg.sender == address(deployerAddress), "Deployed:Sender should be deployer contract");
         _;
     }
 
@@ -35,8 +35,8 @@ contract Deployed is DeployedI, Owned {
         onlyOwner
         returns(bool success)
     {
-        require(newDeployer != address(0));
-        require(newDeployer != deployerAddress);
+        require(newDeployer != address(0), "Deployed:invalid address");
+        require(newDeployer != deployerAddress, "Deployed:invalid address");
         emit LogDeployerChanged(msg.sender, deployerAddress, newDeployer);
         deployerAddress = newDeployer;
         return true;

@@ -22,7 +22,7 @@ contract Controlled is ControlledI, Owned {
         address newController);
 
     modifier onlyController {
-        require(msg.sender == controllerAddress);
+        require(msg.sender == controllerAddress, "Controlled:Sender is not controller");
         _;
     }
 
@@ -40,8 +40,8 @@ contract Controlled is ControlledI, Owned {
         onlyOwner
         returns(bool success)
     {
-        require(newController != address(0));
-        require(newController != controllerAddress);
+        require(newController != address(0), "Controlled:Invalid address");
+        require(newController != controllerAddress, "Controlled:New controller should be different than controller");
         emit LogControllerChanged(msg.sender, controllerAddress, newController);
         controllerAddress = newController;
         return true;

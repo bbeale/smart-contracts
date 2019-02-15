@@ -61,7 +61,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyDeployed
     onlyIfRunning
   {
-    require(msg.sender == depositAddresses[_userAddress]);
+    require(msg.sender == depositAddresses[_userAddress], "Main:sender should be deposit address");
     userStructs[_userAddress].balance = userStructs[_userAddress].balance.add(msg.value);
 
     vault.transfer(msg.value);
@@ -79,7 +79,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyController
     onlyIfRunning
   {
-      require(userStructs[_userAddress].balance >= amount);
+      require(userStructs[_userAddress].balance >= amount, "Main:user does not have enough balance");
       userStructs[_userAddress].balance = userStructs[_userAddress].balance.sub(amount);
       emit LogUserCreditCollected(_userAddress, amount, ref);
   }
@@ -110,13 +110,13 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyIfRunning
     returns(address depositable)
   {
-      if(!isUser(_userAddress)) require(insertNewUser(_userAddress));
-      require(depositAddresses[_userAddress] == address(0));
+      if(!isUser(_userAddress)) require(insertNewUser(_userAddress), "Main:inserting user has failed");
+      require(depositAddresses[_userAddress] == address(0), "Main:invalid address");
       SolidifiedDepositableFactoryI f = SolidifiedDepositableFactoryI(depositableFactoryAddress);
       address d = f.deployDepositableContract(_userAddress, address(this));
 
-      require(insertDeployedContract(d));
-      require(registerDepositAddress(_userAddress, d));
+      require(insertDeployedContract(d), "Main:insert contract failed");
+      require(registerDepositAddress(_userAddress, d), "Main:contract registration failed");
 
       emit LogDepositableDeployed(_userAddress, d,getDeployedContractsCount());
 
@@ -133,10 +133,10 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyController
     onlyIfRunning
   {
-    require(userStructs[_userAddress].balance >= amount);
+    require(userStructs[_userAddress].balance >= amount,"Main:user does not have enough balance");
     userStructs[_userAddress].balance = userStructs[_userAddress].balance.sub(amount);
     (bool success, bytes memory _) = vault.call(abi.encodeWithSignature("submitTransaction(address,uint256)",_userAddress,amount));
-    require(success);
+    require(success, "Main:low level call failed");
 
     emit LogRequestWithdraw(_userAddress, amount);
   }
@@ -179,7 +179,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyIfRunning
     returns(bool success)
   {
-    require(!isUser(user));
+    require(!isUser(user), "Main:address is already user");
     userStructs[user].pointer = userList.push(user).sub(uint(1));
     emit LogUserInserted(user, userStructs[user].pointer);
     return true;
@@ -194,7 +194,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyOwner
     onlyIfRunning
   {
-    require(_newVault != address(0));
+    require(_newVault != address(0),"Main:invalid address");
     vault = _newVault;
     emit LogVaultAddressChanged(_newVault, msg.sender);
   }
@@ -208,7 +208,7 @@ contract SolidifiedMain is Controlled, Deployer, Stoppable {
     onlyController
     onlyIfRunning
   {
-    require(_newAddress != address(0));
+    require(_newAddress != address(0),"Main:invalid address");
     depositableFactoryAddress = _newAddress;
 
     emit LogDepositableFactoryAddressChanged(_newAddress, msg.sender);

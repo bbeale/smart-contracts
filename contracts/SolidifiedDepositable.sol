@@ -24,8 +24,8 @@ contract SolidifiedDepositable {
   function ()
     external
     payable {
-    require(msg.value > 0);
+    require(msg.value > 0, "Depositable:invalid amount");
     (bool success, bytes memory _) = mainHub.call.value(msg.value)(abi.encodeWithSignature("receiveDeposit(address)",userAddress));
-    require(success);
+    require(success, "Depositable:low level call has failed");
   }
 }
