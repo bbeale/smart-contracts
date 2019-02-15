@@ -3,7 +3,7 @@ const { hubDeployer } = require('./helpers/hubDeployer');
 // Truffle v3 method of importing the contract source code abstractions for this process
 
 const SolidifiedDepositable = artifacts.require('./SolidifiedDepositable.sol');
-
+const BN = web3.utils.BN;
 
 // Pass in "accounts[]" (comes from Truffle's test suite) and use it near 30.
 
@@ -14,6 +14,7 @@ contract('Solidified Main', function (accounts) {
   const ownerAddress = accounts[0];
   const controllerAddress = accounts[1];
   const userAddress = accounts[3];
+  const reference = web3.utils.utf8ToHex("reference");
 
   context('Deploying a depositable contract', async () => {
 
@@ -109,7 +110,7 @@ contract('Solidified Main', function (accounts) {
 
   context('Recieving and redirecting ether', async () => {
 
-    const amount = 10 ** 18;
+    const amount = new BN(10).pow(new BN(10));;
 
     before(async () => {
       //Deploying main hub
@@ -124,20 +125,20 @@ contract('Solidified Main', function (accounts) {
     it('Can receive user funds correctly', async () => {
       await web3.eth.sendTransaction({ to: hub.depositable.address, from: userAddress, value: amount });
       const balance = await hub.main.userStructs(userAddress);
-      assert.equal(balance[0].toNumber(), amount, 'user should have correct balance');
+      assert.isTrue(balance[0].eq(amount), 'user should have correct balance');
     });
 
     it('Redirects correctly to vault', async () => {
-      const balance = await web3.eth.getBalance(hub.vault.address);
-      assert.equal(balance.toNumber(), amount, 'Vault should have received correct amount');
+      const balance = new BN(await web3.eth.getBalance(hub.vault.address));
+      assert.isTrue(balance.eq(amount), 'Vault should have received correct amount');
     });
 
     it('Deposit correctly to user regardless of sender', async () => {
       await web3.eth.sendTransaction({ to: hub.depositable.address, from: accounts[8], value: amount });
       const userBalance = await hub.main.userStructs(userAddress);
       const vaultBalance = await web3.eth.getBalance(hub.vault.address);
-      assert.equal(vaultBalance.toNumber(), amount * 2, 'Vault should have received correct amount');
-      assert.equal(userBalance[0].toNumber(), amount * 2, 'user should have correct balance');
+      assert.equal(vaultBalance, amount * 2, 'Vault should have received correct amount');
+      assert.equal(userBalance[0], amount * 2, 'user should have correct balance');
     });
 
     it('correctly request vault for withdraw', async () => {
@@ -149,13 +150,13 @@ contract('Solidified Main', function (accounts) {
     });
 
     it('Owner should be able to confirm transaction', async () => {
-      const userBalanceBefore = await web3.eth.getBalance(userAddress);
-      const vaultBalanceBefore = await web3.eth.getBalance(hub.vault.address);
+      const userBalanceBefore = new BN(await web3.eth.getBalance(userAddress));
+      const vaultBalanceBefore = new BN(await web3.eth.getBalance(hub.vault.address));
       await hub.vault.confirmTransaction(0, { from: ownerAddress });
-      const userBalanceAfter = await web3.eth.getBalance(userAddress);
-      const vaultBalanceAfter = await web3.eth.getBalance(hub.vault.address);
-      assert.equal(userBalanceBefore.toNumber() + amount, userBalanceAfter, 'User should have received ether amount');
-      assert.equal(vaultBalanceBefore.toNumber() - amount, vaultBalanceAfter.toNumber(), 'Vault should have transferred the amount');
+      const userBalanceAfter = new BN(await web3.eth.getBalance(userAddress));
+      const vaultBalanceAfter = new BN(await web3.eth.getBalance(hub.vault.address));
+      assert.isTrue(userBalanceBefore.add(amount).eq(userBalanceAfter), 'User should have received ether amount');
+      assert.isTrue(vaultBalanceBefore.sub(amount).eq(vaultBalanceAfter), 'Vault should have transferred the amount');
     });
 
     it('Shouldn\'t allow request withdraw for non-user', async () => {
@@ -180,7 +181,7 @@ contract('Solidified Main', function (accounts) {
 
     it('Controller can collect user credit', async () => {
       const balanceBefore = await hub.main.userStructs(userAddress);
-      await hub.main.collectUserCredit(userAddress, amount / 2, 'reference', { from: controllerAddress });
+      await hub.main.collectUserCredit(userAddress, amount.div(new BN(2)), reference, { from: controllerAddress });
       const balanceAfter = await hub.main.userStructs(userAddress);
       assert.equal(balanceBefore[0].toNumber(), balanceAfter[0].toNumber() + amount / 2, 'controller did not collect funds');
     });
@@ -188,7 +189,7 @@ contract('Solidified Main', function (accounts) {
     it('Controller can\'t collect more than user has', async () => {
       let isError = false;
       try {
-        await hub.main.collectUserCredit(userAddress, amount * 3, 'reference', { from: controllerAddress });
+        await hub.main.collectUserCredit(userAddress, amount * 3, reference, { from: controllerAddress });
       } catch (error) {
         isError = true;
       }
@@ -197,7 +198,7 @@ contract('Solidified Main', function (accounts) {
 
     it('Controller can deposit credit for user', async () => {
       const balanceBefore = await hub.main.userStructs(userAddress);
-      await hub.main.depositUserCredit(userAddress, amount / 2, 'reference', { from: controllerAddress });
+      await hub.main.depositUserCredit(userAddress, amount.div(new BN(2)), reference, { from: controllerAddress });
       const balanceAfter = await hub.main.userStructs(userAddress);
       assert.equal(balanceBefore[0].toNumber(), balanceAfter[0].toNumber() - amount / 2, 'controller did not collect funds');
     });
